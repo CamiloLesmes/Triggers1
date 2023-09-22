@@ -1,0 +1,48 @@
+create database supermercado;
+use supermercado;
+
+-- Tabla de productos
+CREATE TABLE Productos (id_producto INT PRIMARY KEY AUTO_INCREMENT,
+ nombre VARCHAR(255) NOT NULL,
+ precio DECIMAL(10, 2) NOT NULL,
+ stock INT NOT NULL
+);
+-- Tabla de clientes
+CREATE TABLE Clientes (id_cliente INT PRIMARY KEY AUTO_INCREMENT,
+ nombre VARCHAR(255) NOT NULL,
+ direccion VARCHAR(255),
+ telefono VARCHAR(20)
+);
+-- Tabla de facturas
+CREATE TABLE Facturas (factura_id INT PRIMARY KEY AUTO_INCREMENT,
+ cliente_id INT, fecha DATE NOT NULL,
+total_sin_iva DECIMAL(10, 2) DEFAULT 0.00, iva DECIMAL(10, 2) DEFAULT 0.00,
+total_con_iva DECIMAL(10, 2) DEFAULT 0.00,
+FOREIGN KEY (cliente_id) REFERENCES Clientes(cliente_id)
+);
+-- Tabla de detalles de factura (items comprados)
+CREATE TABLE DetallesFactura (detalle_id INT PRIMARY KEY AUTO_INCREMENT,
+ factura_id INT, producto_id INT,cantidad INT NOT NULL, subtotal DECIMAL(10, 2) NOT NULL,
+FOREIGN KEY (factura_id) REFERENCES Facturas(factura_id),
+ FOREIGN KEY (producto_id) REFERENCES Productos(producto_id)
+);
+-- Trigger para calcular el valor de la factura incluyendo el IVA:Supongamos que el IVA es del 16% 
+
+DELIMITER //
+CREATE TRIGGER calcularFacturaAFTER INSERT ON DetallesFactura
+FOR EACH ROW
+BEGIN
+DECLARE valorIVA DECIMAL(10, 2);
+DECLARE totalSinIVA DECIMAL(10, 2);
+-- Calculamos el total sin IVA sumando el subtotal de todos los items de la factura --
+DECLARE totalConIVA DECIMAL(10, 2);
+ -- Calculamos el valor del IVA --
+ 	SELECT SUM(subtotal) INTO totalSinIVA FROM DetallesFactura WHERE factura_id = NEW.factura_id;
+ 	SET valorIVA = totalSinIVA * 0.16;
+ 	SET totalConIVA = totalSinIVA + valorIVA;    -- Actualizamos la factura con los valores calculados
+UPDATE Facturas 
+    SET total_sin_iva = totalSinIVA, iva = valorIVA, total_con_iva = totalConIVA 
+    WHERE factura_id = NEW.factura_id;
+END;
+//
+DELIMITER ;
